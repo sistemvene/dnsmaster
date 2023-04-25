@@ -1,0 +1,49 @@
+version: "3.5"
+
+# Docker Volumes
+volumes:
+    letsencrypt_logs:
+        name: letsencrypt_logs
+    letsencrypt_data:
+        name: letsencrypt_data
+    bitwardenrs_data:
+        name: bitwardenrs_data
+
+# Docker services
+services:
+
+    # Reverse proxy in the frontline
+    lets-haproxy:
+        image: achetronic/lets-haproxy:latest
+        container_name: lets-haproxy
+        restart: always
+        tty: true
+        stdin_open: true
+        environment:
+            ENVIRONMENT: "staging" # staging | production
+            ADMIN_MAIL: "me@achetronic.com"
+            SKIP_CREATION: "false"
+        volumes:
+            - ./haproxy.cfg:/root/templates/haproxy.user.cfg:ro
+            - letsencrypt_logs:/var/log/letsencrypt
+            - letsencrypt_data:/etc/letsencrypt
+        ports:
+            - "80:80"
+            - "443:443"
+
+    # Bitwarden server implemented in Rust
+    bitwardenrs:
+        image: bitwardenrs/server:latest
+        container_name: bitwardenrs
+        restart: always
+        tty: true
+        stdin_open: true
+        environment:
+            # Password for accessing /admin (generate it with: openssl rand -base64 48)
+            ADMIN_TOKEN: "q2m8h9iYl9FpPB3PSfUHAM5/dxrt7IU44zoY9NAyNp6ecr5pjzIBZWwpYwxtqE+j" 
+            # Allow people to register
+            # SIGNUPS_ALLOWED: "false"
+        volumes:
+            - bitwardenrs_data:/data/
+        expose:
+            - "80"
